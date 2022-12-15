@@ -19,19 +19,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# NOTE
-# QtWebEngine will throw error "ImportError: QtWebEngineWidgets must be imported before a QCoreApplication instance is created"
-from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt5 import QtCore
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QUrl, QEventLoop
+try:
+	from PyQt5.QtCore.Qt import WindowType as QtWindowType
+except:
+	from PyQt5.QtCore import Qt as QtWindowType
+from PyQt5.QtNetwork import QNetworkProxy, QNetworkProxyFactory
 
-from PyQt6 import QtCore
-from PyQt6.QtGui import QColor
-from PyQt6.QtCore import QUrl, Qt, QEventLoop
-from PyQt6.QtNetwork import QNetworkProxy, QNetworkProxyFactory
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineSettings
-from PyQt6.QtWidgets import QWidget, QApplication, QVBoxLayout
+from PyQt5.QtWebKitWidgets import QWebPage, QWebView
+from PyQt5.QtWebKit import QWebSettings
+from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout
+
 from epc.client import EPCClient
 from epc.server import ThreadingEPCServer
+
 import base64
 import functools
 import importlib
@@ -151,9 +154,12 @@ def get_emacs_func_result(method_name, args):
         result = epc_client.call_sync("eval-in-emacs", args)
         return result if result != [] else False
 
-class BrowserPage(QWebEnginePage):
+class BrowserPage(QWebPage):
     def __init__(self):
-        QWebEnginePage.__init__(self)
+        QWebPage.__init__(self)
+
+    def runJavaScript(self, script_src):
+        self.mainFrame().evaluateJavaScript(script_src)
 
     def execute_javascript(self, script_src):
         ''' Execute JavaScript.'''
@@ -161,7 +167,8 @@ class BrowserPage(QWebEnginePage):
         self.loop = QEventLoop()
 
         # Run JavaScript code.
-        self.runJavaScript(script_src, self.callback_js)
+        #self.runJavaScript(script_src, self.callback_js)
+        self.runJavaScript(script_src)
 
         # Execute event loop, and wait event loop quit.
         self.loop.exec()
@@ -180,9 +187,9 @@ class WebWindow(QWidget):
         global screen_size
 
         if platform.system() == "Windows":
-            self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.WindowDoesNotAcceptFocus)
+            self.setWindowFlags(QtWindowType.FramelessWindowHint | QtWindowType.WindowStaysOnTopHint | QtWindowType.Tool | QtWindowType.WindowDoesNotAcceptFocus)
         else:
-            self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.ToolTip)
+            self.setWindowFlags(QtWindowType.FramelessWindowHint | QtWindowType.WindowStaysOnTopHint | QtWindowType.ToolTip)
         self.setContentsMargins(0, 0, 0, 0)
 
         self.vbox = QVBoxLayout(self)
@@ -199,11 +206,11 @@ class WebWindow(QWidget):
 
         self.update_theme_mode()
 
-        self.webview = QWebEngineView()
+        self.webview = QWebView()
         self.web_page = BrowserPage()
         self.webview.setPage(self.web_page)
 
-        self.web_page.setBackgroundColor(QColor(get_emacs_func_result("popweb-get-theme-background", [])))
+        #self.web_page.setBackgroundColor(QColor(get_emacs_func_result("popweb-get-theme-background", [])))
 
         self.webview.loadStarted.connect(lambda : self.reset_zoom())
         self.webview.loadProgress.connect(lambda : self.execute_loading_js_code())
@@ -217,13 +224,13 @@ class WebWindow(QWidget):
 
         self.settings = self.webview.settings()
         try:
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.DnsPrefetchEnabled, True)
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.FocusOnNavigationEnabled, True)
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-            self.settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, False)
+            #self.settings.setAttribute(QWebSettings.WebAttribute.FullScreenSupportEnabled, True)
+            self.settings.setAttribute(QWebSettings.DnsPrefetchEnabled, True)
+            #self.settings.setAttribute(QWebSettings.WebAttribute.FocusOnNavigationEnabled, True)
+            #self.settings.setAttribute(QWebSettings.WebAttribute.PlaybackRequiresUserGesture, False)
+            self.settings.setAttribute(QWebSettings.PluginsEnabled, True)
+            self.settings.setAttribute(QWebSettings.JavascriptEnabled, True)
+            #self.settings.setAttribute(QWebSettings.WebAttribute.ShowScrollBars, False)
         except Exception:
             import traceback
             traceback.print_exc()
